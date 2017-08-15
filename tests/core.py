@@ -1136,15 +1136,17 @@ class CliTests(unittest.TestCase):
         with mock.patch('sys.stdout',
                         new_callable=six.StringIO) as mock_stdout:
             cli.connections(self.parser.parse_args(
-                ['connections', '--list', '--conn_id=fake',
-                 '--conn_uri=fake-uri']))
+                ['connections', '--list', '--conn_id=fake', '--conn_uri=fake-uri',
+                 '--conn_type=fake-type', '--conn_host=fake_host',
+                 '--conn_login=fake_login', '--conn_password=fake_password',
+                 '--conn_schema=fake_schema', '--conn_port=fake_port', '--conn_extra=fake_extra']))
             stdout = mock_stdout.getvalue()
 
         # Check list attempt stdout
         lines = [l for l in stdout.split('\n') if len(l) > 0]
         self.assertListEqual(lines, [
             ("\tThe following args are not compatible with the " +
-             "--list flag: ['conn_id', 'conn_uri']"),
+             "--list flag: ['conn_id', 'conn_uri', 'conn_extra', 'conn_type', 'conn_host', 'conn_login', 'conn_password', 'conn_schema', 'conn_port']"),
         ])
 
     def test_cli_connections_add_delete(self):
@@ -1164,6 +1166,17 @@ class CliTests(unittest.TestCase):
             cli.connections(self.parser.parse_args(
                 ['connections', '-a', '--conn_id=new4',
                  '--conn_uri=%s' % uri, '--conn_extra', "{'extra': 'yes'}"]))
+            cli.connections(self.parser.parse_args(
+                ['connections', '-a', '--conn_id=new5',
+                 '--conn_uri=hive_metastore://airflow:airflow@host:9083/airflow']))
+            cli.connections(self.parser.parse_args(
+                ['connections', '--add', '--conn_id=new6',
+                 '--conn_type=hive_metastore', '--conn_login=airflow',
+                 '--conn_password=airflow', '--conn_host=host',
+                 '--conn_port=9083', '--conn_schema=airflow']))
+            cli.connections(self.parser.parse_args(
+                ['connections', '-a', '--conn_id=new7',
+                 '--conn_uri', "", '--conn_type=google_cloud_platform', '--conn_extra', "{'extra': 'yes'}"]))
             stdout = mock_stdout.getvalue()
 
         # Check addition stdout
@@ -1177,6 +1190,12 @@ class CliTests(unittest.TestCase):
              "postgresql://airflow:airflow@host:5432/airflow"),
             ("\tSuccessfully added `conn_id`=new4 : " +
              "postgresql://airflow:airflow@host:5432/airflow"),
+            ("\tSuccessfully added `conn_id`=new5 : " +
+             "hive_metastore://airflow:airflow@host:9083/airflow"),
+            ("\tSuccessfully added `conn_id`=new6 : " +
+             "hive_metastore://airflow:airflow@host:9083/airflow"),
+            ("\tSuccessfully added `conn_id`=new7 : " +
+             "google_cloud_platform://:@:")
         ])
 
         # Attempt to add duplicate
@@ -1218,7 +1237,7 @@ class CliTests(unittest.TestCase):
         lines = [l for l in stdout.split('\n') if len(l) > 0]
         self.assertListEqual(lines, [
             ("\tThe following args are required to add a connection:" +
-             " ['conn_uri']"),
+             " ['conn_uri or conn_type']"),
         ])
 
         # Prepare to add connections
@@ -1226,18 +1245,27 @@ class CliTests(unittest.TestCase):
         extra = {'new1': None,
                  'new2': None,
                  'new3': "{'extra': 'yes'}",
-                 'new4': "{'extra': 'yes'}"}
+                 'new4': "{'extra': 'yes'}",
+                 'new5': None}
 
         # Add connections
-        for conn_id in ['new1', 'new2', 'new3', 'new4']:
+        for index in range(1, 7):
+            conn_id = 'new%s' % index
             result = (session
                       .query(models.Connection)
                       .filter(models.Connection.conn_id == conn_id)
                       .first())
             result = (result.conn_id, result.conn_type, result.host,
                       result.port, result.get_extra())
-            self.assertEqual(result, (conn_id, 'postgres', 'host', 5432,
-                                      extra[conn_id]))
+            if conn_id in ['new1', 'new2', 'new3', 'new4']:
+                self.assertEqual(result, (conn_id, 'postgres', 'host', 5432,
+                                          extra[conn_id]))
+            elif conn_id in ['new5', 'new6']:
+                self.assertEqual(result, (conn_id, 'hive_metastore', 'host',
+                                          9083, None))
+            elif conn_id == 'new7':
+                self.assertEqual(result, (conn_id, 'google_cloud_platform',
+                                          None, None, "{'extra': 'yes'}"))
 
         # Delete connections
         with mock.patch('sys.stdout',
@@ -1250,6 +1278,12 @@ class CliTests(unittest.TestCase):
                 ['connections', '--delete', '--conn_id=new3']))
             cli.connections(self.parser.parse_args(
                 ['connections', '--delete', '--conn_id=new4']))
+            cli.connections(self.parser.parse_args(
+                ['connections', '--delete', '--conn_id=new5']))
+            cli.connections(self.parser.parse_args(
+                ['connections', '--delete', '--conn_id=new6']))
+            cli.connections(self.parser.parse_args(
+                ['connections', '--delete', '--conn_id=new7']))
             stdout = mock_stdout.getvalue()
 
         # Check deletion stdout
@@ -1258,11 +1292,15 @@ class CliTests(unittest.TestCase):
             "\tSuccessfully deleted `conn_id`=new1",
             "\tSuccessfully deleted `conn_id`=new2",
             "\tSuccessfully deleted `conn_id`=new3",
-            "\tSuccessfully deleted `conn_id`=new4"
+            "\tSuccessfully deleted `conn_id`=new4",
+            "\tSuccessfully deleted `conn_id`=new5",
+            "\tSuccessfully deleted `conn_id`=new6",
+            "\tSuccessfully deleted `conn_id`=new7"
         ])
 
         # Check deletions
-        for conn_id in ['new1', 'new2', 'new3', 'new4']:
+        for index in range(1, 7):
+            conn_id = 'new%s' % index
             result = (session
                       .query(models.Connection)
                       .filter(models.Connection.conn_id == conn_id)
@@ -1288,14 +1326,14 @@ class CliTests(unittest.TestCase):
                         new_callable=six.StringIO) as mock_stdout:
             cli.connections(self.parser.parse_args(
                 ['connections', '--delete', '--conn_id=fake',
-                 '--conn_uri=%s' % uri]))
+                 '--conn_uri=%s' % uri, '--conn_type=fake-type']))
             stdout = mock_stdout.getvalue()
 
         # Check deletion attempt stdout
         lines = [l for l in stdout.split('\n') if len(l) > 0]
         self.assertListEqual(lines, [
             ("\tThe following args are not compatible with the " +
-             "--delete flag: ['conn_uri']"),
+             "--delete flag: ['conn_uri', 'conn_type']"),
         ])
 
         session.close()
