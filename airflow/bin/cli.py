@@ -1413,7 +1413,10 @@ class CLIFactory(object):
             type=str),
         'conn_uri': Arg(
             ('--conn_uri',),
-            help='Connection URI, required to add a connection',
+            help=(
+                'Connection URI, required to add a connection. '
+                'If Scheme includes "_", set scheme to conn_type, and conn_uri '
+                'to empty character or start it with "//".'),
             type=str),
         'conn_type': Arg(
             ('--conn_type',),
