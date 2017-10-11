@@ -317,15 +317,20 @@ class DagBag(BaseDagBag, LoggingMixin):
                         self.import_errors[filepath] = str(e)
                         self.file_last_changed[filepath] = file_last_changed_on_disk
 
+        dag_dict = {}
+        sub_dags = []
         for m in mods:
             for dag in list(m.__dict__.values()):
                 if isinstance(dag, DAG):
                     if not dag.full_filepath:
                         dag.full_filepath = filepath
-                    dag.is_subdag = False
                     self.bag_dag(dag, parent_dag=dag, root_dag=dag)
-                    found_dags.append(dag)
-                    found_dags += dag.subdags
+                    dag_dict[dag.dag_id] = dag
+                    sub_dags += dag.subdags
+
+        for dag in sub_dags:
+            dag_dict[dag.dag_id] = dag
+        found_dags = dag_dict.values()
 
         self.file_last_changed[filepath] = file_last_changed_on_disk
         return found_dags

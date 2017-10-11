@@ -646,6 +646,21 @@ class DagBagTest(unittest.TestCase):
         dagbag = models.DagBag(include_examples=True)
         self.assertEqual([], dagbag.process_file(f.name))
 
+    def test_process_file_that_contains_subdag_as_local_variable(self):
+        """
+        test that we're able to process subdag correctly even if it is defined as local variable
+        """
+        dagbag = models.DagBag()
+        dags = dagbag.process_file(os.path.join(
+            TEST_DAGS_FOLDER, 'test_subdag_local_variable.py'), only_if_updated=False)
+        self.assertEqual(set(['test_subdag_parent', 'test_subdag_parent.test_subdag.0',
+                              'test_subdag_parent.test_subdag.1']), {dag.dag_id for dag in dags})
+        for dag in dags:
+            if '.test_subdag.' in dag.dag_id:
+                self.assertTrue(dag.is_subdag)
+            else:
+                self.assertFalse(dag.is_subdag)
+
     def test_zip(self):
         """
         test the loading of a DAG within a zip file that includes dependencies
