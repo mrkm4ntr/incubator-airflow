@@ -1481,21 +1481,12 @@ class ClearTasksTest(unittest.TestCase):
         self.assertEqual(ret_value, json_obj)
 
         session = settings.Session()
-        ret_obj = session.query(XCom).filter(XCom.key == key, XCom.dag_id == dag_id,
-                                             XCom.task_id == task_id, XCom.execution_date == execution_date).first()
-        ret_value = ret_obj.value
+        ret_value = session.query(XCom).filter(XCom.key == key, XCom.dag_id == dag_id,
+                                               XCom.task_id == task_id, XCom.execution_date == execution_date).first().value
 
         self.assertEqual(ret_value, json_obj)
 
-        # To prevent errors due to XComs mixed with pickled and unpickled
-        if enable_pickling:
-            conf.load_test_config()
-            XCom.delete(ret_obj)
-
     def test_xcom_enable_pickle_type(self):
-        conf.load_test_config()
-        enable_pickling = conf.getboolean("core", "enable_xcom_pickling")
-
         json_obj = {"key": "value"}
         execution_date = datetime.datetime.now()
         key = "xcom_test2"
@@ -1518,16 +1509,10 @@ class ClearTasksTest(unittest.TestCase):
         self.assertEqual(ret_value, json_obj)
 
         session = settings.Session()
-        ret_obj = session.query(XCom).filter(XCom.key == key, XCom.dag_id == dag_id,
-                                             XCom.task_id == task_id, XCom.execution_date == execution_date).first()
-        ret_value = ret_obj.value
+        ret_value = session.query(XCom).filter(XCom.key == key, XCom.dag_id == dag_id,
+                                               XCom.task_id == task_id, XCom.execution_date == execution_date).first().value
 
         self.assertEqual(ret_value, json_obj)
-
-        # To prevent errors due to XComs mixed with pickled and unpickled
-        if not enable_pickling:
-            conf.load_test_config()
-            XCom.delete(ret_obj)
 
     def test_xcom_disable_pickle_type_fail_on_non_json(self):
         class PickleRce(object):

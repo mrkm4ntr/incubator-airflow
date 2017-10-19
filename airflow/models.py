@@ -4044,12 +4044,9 @@ class XCom(Base, LoggingMixin):
         else:
             try:
                 self.value = json.loads(self.value.decode('UTF-8'))
-            except ValueError:
-                self.log.error("Could not deserialize the XCOM value from JSON. "
-                               "If you are using pickles instead of JSON "
-                               "for XCOM, then you need to enable pickle "
-                               "support for XCOM in your airflow config.")
-                raise
+            except UnicodeEncodeError, ValueError:
+                # For backward-compatibility. Preventing errors in webserver due to XComs mixed with pickled and unpickled.
+                self.value = pickle.loads(self.value)
 
     def __repr__(self):
         return '<XCom "{key}" ({task_id} @ {execution_date})>'.format(
