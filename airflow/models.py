@@ -4044,7 +4044,7 @@ class XCom(Base, LoggingMixin):
         else:
             try:
                 self.value = json.loads(self.value.decode('UTF-8'))
-            except UnicodeEncodeError, ValueError:
+            except (UnicodeEncodeError, ValueError):
                 # For backward-compatibility. Preventing errors in webserver due to XComs mixed with pickled and unpickled.
                 self.value = pickle.loads(self.value)
 
