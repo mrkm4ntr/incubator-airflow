@@ -1167,15 +1167,12 @@ class CliTests(unittest.TestCase):
                 ['connections', '-a', '--conn_id=new4',
                  '--conn_uri=%s' % uri, '--conn_extra', "{'extra': 'yes'}"]))
             cli.connections(self.parser.parse_args(
-                ['connections', '-a', '--conn_id=new5',
-                 '--conn_uri=hive_metastore://airflow:airflow@host:9083/airflow']))
-            cli.connections(self.parser.parse_args(
-                ['connections', '--add', '--conn_id=new6',
+                ['connections', '--add', '--conn_id=new5',
                  '--conn_type=hive_metastore', '--conn_login=airflow',
                  '--conn_password=airflow', '--conn_host=host',
                  '--conn_port=9083', '--conn_schema=airflow']))
             cli.connections(self.parser.parse_args(
-                ['connections', '-a', '--conn_id=new7',
+                ['connections', '-a', '--conn_id=new6',
                  '--conn_uri', "", '--conn_type=google_cloud_platform', '--conn_extra', "{'extra': 'yes'}"]))
             stdout = mock_stdout.getvalue()
 
@@ -1193,8 +1190,6 @@ class CliTests(unittest.TestCase):
             ("\tSuccessfully added `conn_id`=new5 : " +
              "hive_metastore://airflow:airflow@host:9083/airflow"),
             ("\tSuccessfully added `conn_id`=new6 : " +
-             "hive_metastore://airflow:airflow@host:9083/airflow"),
-            ("\tSuccessfully added `conn_id`=new7 : " +
              "google_cloud_platform://:@:")
         ])
 
@@ -1245,11 +1240,10 @@ class CliTests(unittest.TestCase):
         extra = {'new1': None,
                  'new2': None,
                  'new3': "{'extra': 'yes'}",
-                 'new4': "{'extra': 'yes'}",
-                 'new5': None}
+                 'new4': "{'extra': 'yes'}"}
 
         # Add connections
-        for index in range(1, 7):
+        for index in range(1, 6):
             conn_id = 'new%s' % index
             result = (session
                       .query(models.Connection)
@@ -1260,10 +1254,10 @@ class CliTests(unittest.TestCase):
             if conn_id in ['new1', 'new2', 'new3', 'new4']:
                 self.assertEqual(result, (conn_id, 'postgres', 'host', 5432,
                                           extra[conn_id]))
-            elif conn_id in ['new5', 'new6']:
+            elif conn_id == 'new5':
                 self.assertEqual(result, (conn_id, 'hive_metastore', 'host',
                                           9083, None))
-            elif conn_id == 'new7':
+            elif conn_id == 'new6':
                 self.assertEqual(result, (conn_id, 'google_cloud_platform',
                                           None, None, "{'extra': 'yes'}"))
 
@@ -1282,8 +1276,6 @@ class CliTests(unittest.TestCase):
                 ['connections', '--delete', '--conn_id=new5']))
             cli.connections(self.parser.parse_args(
                 ['connections', '--delete', '--conn_id=new6']))
-            cli.connections(self.parser.parse_args(
-                ['connections', '--delete', '--conn_id=new7']))
             stdout = mock_stdout.getvalue()
 
         # Check deletion stdout
@@ -1294,8 +1286,7 @@ class CliTests(unittest.TestCase):
             "\tSuccessfully deleted `conn_id`=new3",
             "\tSuccessfully deleted `conn_id`=new4",
             "\tSuccessfully deleted `conn_id`=new5",
-            "\tSuccessfully deleted `conn_id`=new6",
-            "\tSuccessfully deleted `conn_id`=new7"
+            "\tSuccessfully deleted `conn_id`=new6"
         ])
 
         # Check deletions
