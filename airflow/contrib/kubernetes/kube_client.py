@@ -17,16 +17,20 @@
 from airflow.configuration import conf
 
 
-def _load_kube_config(in_cluster):
+def _load_kube_config(in_cluster, context):
     from kubernetes import config, client
     if in_cluster:
         config.load_incluster_config()
         return client.CoreV1Api()
     else:
-        config.load_kube_config()
-        return client.CoreV1Api()
+        if context is None:
+            config.load_kube_config()
+            return client.CoreV1Api()
+        else:
+            client.CoreV1API(
+                api_client=config.new_client_from_config(context=context))
 
 
-def get_kube_client(in_cluster=conf.getboolean('kubernetes', 'in_cluster')):
-    # TODO: This should also allow people to point to a cluster.
-    return _load_kube_config(in_cluster)
+def get_kube_client(in_cluster=conf.getboolean('kubernetes', 'in_cluster'),
+                    context=None):
+    return _load_kube_config(in_cluster, context)
