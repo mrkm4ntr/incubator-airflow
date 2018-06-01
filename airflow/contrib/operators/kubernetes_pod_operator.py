@@ -70,6 +70,10 @@ class KubernetesPodOperator(BaseOperator):
     :type get_logs: bool
     :param affinity: A dict containing a group of affinity scheduling rules
     :type affinity: dict
+    :param xcom_push: If xcom_push is True, the content of the file
+        /airflow/xcom/return.json in the container will also be pushed to an
+        XCom when the container completes.
+    :type xcom_push: bool
     """
     template_fields = ('cmds', 'arguments', 'env_vars')
 
@@ -100,8 +104,9 @@ class KubernetesPodOperator(BaseOperator):
             pod.resources = self.resources
             pod.affinity = self.affinity
 
-            launcher = pod_launcher.PodLauncher(kube_client=client)
-            final_state = launcher.run_pod(
+            launcher = pod_launcher.PodLauncher(kube_client=client,
+                                                extract_xcom=self.xcom_push)
+            (final_state, result) = launcher.run_pod(
                 pod,
                 startup_timeout=self.startup_timeout_seconds,
                 get_logs=self.get_logs)
@@ -109,6 +114,8 @@ class KubernetesPodOperator(BaseOperator):
                 raise AirflowException(
                     'Pod returned a failure: {state}'.format(state=final_state)
                 )
+            if self.xcom_push:
+                return result
         except AirflowException as ex:
             raise AirflowException('Pod Launching failed: {error}'.format(error=ex))
 
@@ -132,6 +139,7 @@ class KubernetesPodOperator(BaseOperator):
                  annotations=None,
                  resources=None,
                  affinity=None,
+                 xcom_push=False,
                  *args,
                  **kwargs):
         super(KubernetesPodOperator, self).__init__(*args, **kwargs)
@@ -152,4 +160,5 @@ class KubernetesPodOperator(BaseOperator):
         self.image_pull_policy = image_pull_policy
         self.annotations = annotations or {}
         self.affinity = affinity or {}
+        self.xcom_push = xcom_push
         self.resources = resources or Resources()
