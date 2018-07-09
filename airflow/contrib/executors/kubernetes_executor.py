@@ -191,10 +191,12 @@ class KubeConfig:
         self._validate()
 
     def _validate(self):
-        if not self.dags_volume_claim and (not self.git_repo or not self.git_branch):
+        if not self.dags_embedded and not self.dags_volume_claim \
+                and (not self.git_repo or not self.git_branch):
             raise AirflowConfigException(
                 'In kubernetes mode the following must be set in the `kubernetes` '
-                'config section: `dags_volume_claim` or `git_repo and git_branch`')
+                'config section: `dags_embedded` or `dags_volume_claim` or '
+                '`git_repo and git_branch`')
 
 
 class KubernetesJobWatcher(multiprocessing.Process, LoggingMixin, object):
